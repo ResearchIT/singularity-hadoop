@@ -1,0 +1,68 @@
+Bootstrap: docker
+From: centos:8
+
+%environment
+export JAVA_HOME=/opt/openjdk
+export HADOOP_HOME=/opt/hadoop
+export HADOOP_INSTALL=/opt/hadoop
+export HADOOP_CONF_DIR=${HADOOP_HOME}/etc
+export PATH=$PATH:/opt/hadoop/bin
+
+%files
+hadoop-3.3.0.tar.gz /build/hadoop-3.3.0.tar.gz
+openjdk-16_linux-x64_bin.tar.gz /build/openjdk-16_linux-x64_bin.tar.gz
+
+%post -c /usr/bin/bash
+dnf install -y ncurses
+mkdir -p /opt/{hadoop,openjdk}
+tar -C /opt/openjdk --strip=1 -xzf /build/openjdk-16_linux-x64_bin.tar.gz
+tar -C /opt/hadoop --strip=1 -xzf /build/hadoop-3.3.0.tar.gz
+cd /opt/hadoop/etc/
+cat << EOF > core-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>/hadoop/tmp</value>
+    </property>
+</configuration>
+EOF
+cat << EOF > hdfs-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:///hadoop/hdfs/namenode</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///hadoop/hdfs/datanode</value>
+    </property>
+</configuration>
+EOF
+#cleanup
+rm -rf /build
+dnf clean all
+rm -rf /var/cache/dnf/*
+
+%startscript
+if [[ ! -d /hdfs/namenode/current/VERSION ]];
+then
+	/opt/hadoop/bin/hdfs --config /opt/hadoop/etc namenode -format
+fi
+/opt/hadoop/sbin/hadoop-daemon.sh --config /opt/hadoop/etc start namenode
+#/opt/hadoop/sbin/hadoop-daemon.sh --config /opt/hadoop/etc start secondarynamenode
+/opt/hadoop/sbin/hadoop-daemon.sh --config /opt/hadoop/etc start datanode
+
+%runscript
+exec "$@"
