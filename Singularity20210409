@@ -1,6 +1,26 @@
 Bootstrap: docker
 From: centos:8
 
+%labels
+Author snehring@iastate.edu
+Version 20210409
+
+%help
+This container is supposed to encapsulate a single node 'pseudo-distributed' hadoop installation. It assumes that a directory will be bound to /hadoop and /opt/hadoop/logs.
+Logs will obviously go to the directory bound at /opt/hadoop/logs and the hdfs things will go to the directory bound to /hadoop, specifially /hadoop/hdfs/namenode for namenode stuff
+and /hadoop/hdfs/datanode for datanode stuff.
+
+It is recommend that you run this as an instance eg:
+# the below example assumes the user's username is 'jones' and they're a member of 'jones-lab', you should substitute for your own information
+singularity instance start --bind /work/LAS/jones-lab/jones/hadoop/hdfs:/hadoop --bind /work/LAS/jones-lab/jones/hadoop/logs:/opt/hadoop/logs hadoop.sif hadoop
+
+and the interact with the instance via:
+# again assuming the user is called 'jones'
+singularity exec instance://hadoop hdfs -mkdir /user
+singularity exec instance://hadoop hdfs -mkdir /user/jones
+
+basically you'll preface every command you want to execute in the container with 'singularity exec instance://hadoop'
+
 %environment
 export JAVA_HOME=/opt/openjdk
 export HADOOP_HOME=/opt/hadoop
